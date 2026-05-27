@@ -2,103 +2,97 @@
 
 namespace app\models;
 
-class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
+use Yii;
+use yii\db\ActiveRecord;
+use yii\web\IdentityInterface;
+use yii\behaviors\TimestampBehavior;
+
+class User extends ActiveRecord implements IdentityInterface
 {
-    public $id;
-    public $username;
-    public $password;
-    public $authKey;
-    public $accessToken;
-
-    private static $users = [
-        '100' => [
-            'id' => '100',
-            'username' => 'admin',
-            'password' => 'admin',
-            'authKey' => 'test100key',
-            'accessToken' => '100-token',
-        ],
-        '101' => [
-            'id' => '101',
-            'username' => 'demo',
-            'password' => 'demo',
-            'authKey' => 'test101key',
-            'accessToken' => '101-token',
-        ],
-    ];
-
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function findIdentity($id)
+    public static function tableName(): string
     {
-        return isset(self::$users[$id]) ? new static(self::$users[$id]) : null;
+        return 'user';
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public static function findIdentityByAccessToken($token, $type = null)
+    /** @inheritdoc */
+    public function behaviors(): array
     {
-        foreach (self::$users as $user) {
-            if ($user['accessToken'] === $token) {
-                return new static($user);
-            }
-        }
+        return [
+            TimestampBehavior::class,
+        ];
+    }
 
+    /** @inheritdoc */
+    public function rules(): array
+    {
+        return [
+            [['username', 'email', 'password_hash'], 'required'],
+            [['username'], 'string', 'max' => 50],
+            [['email'], 'email'],
+            [['username', 'email'], 'unique'],
+            [['status'], 'integer'],
+        ];
+    }
+
+    /** @inheritdoc */
+    public static function findIdentity($id): ?self
+    {
+        return static::findOne(['id' => $id, 'status' => 1]);
+    }
+
+    /** @inheritdoc */
+    public static function findIdentityByAccessToken($token, $type = null): ?self
+    {
         return null;
     }
 
     /**
-     * Finds user by username
-     *
-     * @param string $username
-     * @return static|null
+     * Finds user by username.
      */
-    public static function findByUsername($username)
+    public static function findByUsername(string $username): ?self
     {
-        foreach (self::$users as $user) {
-            if (strcasecmp($user['username'], $username) === 0) {
-                return new static($user);
-            }
-        }
-
-        return null;
+        return static::findOne(['username' => $username, 'status' => 1]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getId()
+    /** @inheritdoc */
+    public function getId(): int
     {
         return $this->id;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getAuthKey()
+    /** @inheritdoc */
+    public function getAuthKey(): string
     {
-        return $this->authKey;
+        return $this->auth_key;
+    }
+
+    /** @inheritdoc */
+    public function validateAuthKey($authKey): bool
+    {
+        return $this->auth_key === $authKey;
     }
 
     /**
-     * {@inheritdoc}
+     * Validates password.
      */
-    public function validateAuthKey($authKey)
+    public function validatePassword(string $password): bool
     {
-        return $this->authKey === $authKey;
+        return Yii::$app->security->validatePassword($password, $this->password_hash);
     }
 
     /**
-     * Validates password
-     *
-     * @param string $password password to validate
-     * @return bool if password provided is valid for current user
+     * Generates password hash.
      */
-    public function validatePassword($password)
+    public function setPassword(string $password): void
     {
-        return $this->password === $password;
+        $this->password_hash = Yii::$app->security->generatePasswordHash($password);
+    }
+
+    /**
+     * Generates auth key.
+     */
+    public function generateAuthKey(): void
+    {
+        $this->auth_key = Yii::$app->security->generateRandomString();
     }
 }

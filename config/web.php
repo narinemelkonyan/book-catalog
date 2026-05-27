@@ -4,6 +4,7 @@ $params = require __DIR__ . '/params.php';
 $db = require __DIR__ . '/db.php';
 
 $config = [
+    'name' => 'Book Catalog',
     'id' => 'basic',
     'basePath' => dirname(__DIR__),
     'bootstrap' => ['log'],
@@ -45,14 +46,17 @@ $config = [
             ],
         ],
         'db' => $db,
-        /*
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
+                'authors' => 'author/index',
+                'authors/<id:\d+>' => 'author/view',
+                'books' => 'book/index',
+                'books/<id:\d+>' => 'book/view',
+                'report/top-authors' => 'report/top-authors',
             ],
         ],
-        */
     ],
     'params' => $params,
 ];
